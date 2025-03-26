@@ -34,8 +34,9 @@ services:
       MAILER_DSN: "smtp://mailcatcher:1025"
       DATABASE_URL: "mysql://shopware:shopware@database:3306/shopware"
       OPENSEARCH_URL: "http://opensearch:9200"
+      INSTALL_SHOPWARE: "1"
     volumes:
-      - .:/var/www/html
+      - ./shopware:/var/www/html
     depends_on:
       - database
 

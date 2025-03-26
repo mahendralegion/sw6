@@ -1,19 +1,64 @@
-## SHOPWARE Apps 
+# Hellobar Shopware App
 
+This project demonstrates how to create a Shopware 6 app for integrating Hellobar popups with Shopware stores.
 
-# Requirements
+## Requirements
 
-we looking forward to create a shopware app which will be available to all shopware users via shopware store . 
+- Docker and Docker Compose
+- Node.js 14+ for running the mock server
 
-Idea is to install our Hellobar on shopware , so that users can display nice popups . 
+## Setup
 
-# References . 
+### 1. Start Shopware
 
-1. Developer referneces
-https://www.shopware.com/en/community/developers/
+```bash
+docker compose up -d
+```
 
-2. Shopware apps
-https://developer.shopware.com/docs/concepts/extensions/apps-concept.html
+### 2. Start the mock server
 
-3. App base guide
-https://developer.shopware.com/docs/guides/plugins/apps/app-base-guide.html
+```bash
+cd mock-server
+npm install
+npm start
+```
+
+### 3. Install and activate the Hellobar app
+
+Once both Shopware and the mock server are running:
+
+1. Access Shopware Admin at http://localhost/admin
+2. Login with username `admin` and password `shopware`
+3. Go to Settings > System > Apps
+4. The Hellobar app should appear - click to install it
+5. When prompted, allow the permissions
+
+### 4. Configure Hellobar
+
+1. Go to Settings > Shop > Sales Channels
+2. Select your Storefront
+3. Go to the "Hellobar Configuration" tab
+4. Enable Hellobar and set the Account ID to `demo-account-123`
+5. Save the configuration
+
+## Testing
+
+Visit your storefront at http://localhost. After a few seconds, you should see a popup appear at the top of the page.
+
+## Development
+
+The app structure follows standard Shopware app conventions:
+
+- `shopware/custom/apps/Hellobar/` - Main app directory
+- `shopware/custom/apps/Hellobar/manifest.xml` - App configuration
+- `shopware/custom/apps/Hellobar/Resources/views/storefront/` - Storefront templates
+- `mock-server/` - A simple server that mocks the Hellobar API for development purposes
+
+## Extending for Production
+
+For real production use, you would need to:
+
+1. Set up a real authentication endpoint on your Rails app
+2. Update the manifest.xml with your actual service URLs
+3. Implement proper Shopware-to-Hellobar authentication
+4. Support all Hellobar popup types and customizations
