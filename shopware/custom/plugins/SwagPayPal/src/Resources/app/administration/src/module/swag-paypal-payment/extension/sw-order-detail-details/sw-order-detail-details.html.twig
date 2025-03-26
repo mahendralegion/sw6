@@ -1,0 +1,21 @@
+{% block sw_order_detail_details_shipping_tracking_codes %}
+    {% parent %}
+
+    {% block sw_order_detail_details_shipping_paypal_carrier %}
+    <div v-if="payPalResourceId" class="swag-paypal-order-carrier">
+        <sw-text-field
+            v-model:value="payPalCarrier"
+            disabled
+            :label="$tc('sw-order-detail.payPalCarrierLabel')"
+            :helpText="$tc('sw-order-detail.payPalCarrierHelpText')"
+            :placeholder="$tc('sw-order-detail.payPalCarrierPlaceholder')"
+        />
+
+        <div
+            class="swag-paypal-order-carrier__description"
+            v-html="payPalCarrierDescription"
+        />
+    </div>
+    {% endblock %}
+
+{% endblock %}
