@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+         xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/shopware/platform/trunk/src/Core/Framework/App/Manifest/Schema/manifest-1.0.xsd">
+    <meta>
+        <name>Hellobar</name>
+        <label>Hellobar Marketing Popups</label>
+        <description>Add customizable popups to your Shopware store</description>
+        <author>Your Company</author>
+        <copyright>Your Company</copyright>
+        <version>1.0.0</version>
+        <icon>Resources/config/plugin.png</icon>
+        <license>MIT</license>
+    </meta>
+
+    <setup>
+        <registrationUrl>https://your-hellobar-service.com/shopware/auth</registrationUrl>
+        <secret>S0M3S3CR3T</secret>
+    </setup>
+
+    <permissions>
+        <read>theme</read>
+        <read>sales_channel</read>
+        <update>theme</update>
+    </permissions>
+
+    <admin>
+        <action-button action="getHellobarScript" entity="sales_channel" view="detail">
+            <label>Configure Hellobar</label>
+        </action-button>
+    </admin>
+
+    <custom-fields>
+        <custom-field-set>
+            <name>hellobar_config</name>
+            <label>Hellobar Configuration</label>
+            <related-entities>
+                <sales-channel/>
+            </related-entities>
+            <fields>
+                <bool name="hellobar_enabled">
+                    <label>Enable Hellobar</label>
+                    <default-value>false</default-value>
+                </bool>
+                <text name="hellobar_account_id">
+                    <label>Hellobar Account ID</label>
+                </text>
+            </fields>
+        </custom-field-set>
+    </custom-fields>
+
+    <cookies>
+        <group>
+            <snippet-name>cookie_hellobar_group</snippet-name>
+            <entries>
+                <cookie>
+                    <snippet-name>cookie_hellobar</snippet-name>
+                    <cookie>hellobar_*</cookie>
+                </cookie>
+            </entries>
+        </group>
+    </cookies>
+</manifest> 
