@@ -13,7 +13,7 @@
     </meta>
 
     <setup>
-        <registrationUrl>https://your-hellobar-service.com/shopware/auth</registrationUrl>
+        <registrationUrl>http://host.docker.internal:8000/shopware/auth</registrationUrl>
         <secret>S0M3S3CR3T</secret>
     </setup>
 
@@ -24,7 +24,7 @@
     </permissions>
 
     <admin>
-        <action-button action="getHellobarScript" entity="sales_channel" view="detail">
+        <action-button action="getHellobarScript" entity="product" view="detail" url="http://host.docker.internal:8000/admin">
             <label>Configure Hellobar</label>
         </action-button>
     </admin>
@@ -34,12 +34,11 @@
             <name>hellobar_config</name>
             <label>Hellobar Configuration</label>
             <related-entities>
-                <sales-channel/>
+                <sales_channel />
             </related-entities>
             <fields>
                 <bool name="hellobar_enabled">
                     <label>Enable Hellobar</label>
-                    <default-value>false</default-value>
                 </bool>
                 <text name="hellobar_account_id">
                     <label>Hellobar Account ID</label>

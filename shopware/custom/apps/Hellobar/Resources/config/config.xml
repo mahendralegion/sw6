@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/shopware/platform/trunk/src/Core/System/SystemConfig/Schema/config.xsd">
+    <card>
+        <title>Basic Settings</title>
+        <input-field type="bool">
+            <name>enabled</name>
+            <label>Enable Hellobar</label>
+            <defaultValue>false</defaultValue>
+        </input-field>
+        <input-field>
+            <name>accountId</name>
+            <label>Hellobar Account ID</label>
+            <helpText>You can find your account ID in your Hellobar dashboard</helpText>
+        </input-field>
+    </card>
+</config> 

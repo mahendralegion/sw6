@@ -1,0 +1,32 @@
+{% sw_extends '@Storefront/storefront/layout/meta.html.twig' %}
+
+{% block layout_head_javascript_tracking %}
+    {{ parent() }}
+    
+    {% if app.request.attributes.get('sw-sales-channel-context') %}
+        {% set salesChannel = app.request.attributes.get('sw-sales-channel-context').salesChannel %}
+        {% if salesChannel.customFields and salesChannel.customFields.hellobar_config and salesChannel.customFields.hellobar_config.hellobar_enabled %}
+            <script>
+                // Hellobar script configuration
+                window.hellobarConfig = {
+                    accountId: '{{ salesChannel.customFields.hellobar_config.hellobar_account_id }}',
+                    scriptUrl: 'http://host.docker.internal:8000/loader.js'
+                };
+                
+                // Load Hellobar script
+                (function(h,e,l,l,o,b,a,r){
+                    h['HellobarObject'] = o;
+                    h[o] = h[o] || function(){(h[o].q = h[o].q || []).push(arguments)};
+                    b = e.createElement(l);
+                    a = e.getElementsByTagName(l)[0];
+                    b.async = 1;
+                    b.src = hellobarConfig.scriptUrl;
+                    a.parentNode.insertBefore(b,a);
+                })(window,document,'script','hellobar');
+                
+                // Initialize Hellobar with accountId
+                hellobar('init', hellobarConfig.accountId);
+            </script>
+        {% endif %}
+    {% endif %}
+{% endblock %} 
