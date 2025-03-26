@@ -1,0 +1,59 @@
+{
+    "name": "swag/swag-extension-store",
+    "version": "3.1.3",
+    "description": "SWAG Extension Store",
+    "type": "shopware-platform-plugin",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "shopware AG",
+            "homepage": "https://shopware.com"
+        }
+    ],
+    "require": {
+        "shopware/core": "~6.6.9",
+        "shopware/administration": "~6.6.9"
+    },
+    "autoload": {
+        "psr-4": {
+            "SwagExtensionStore\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "SwagExtensionStore\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "shopware-plugin-class": "SwagExtensionStore\\SwagExtensionStore",
+        "copyright": "shopware AG",
+        "label": {
+            "de-DE": "Shopware Store",
+            "en-GB": "Shopware Store"
+        },
+        "description": {
+            "de-DE": "Entdecken und kaufen Sie Erweiterungen ganz einfach, direkt in Ihrem eigenen Shopware-Shop. Erhalten Sie Zugang zu vielen Erweiterungen, die Sie in Ihren Shop integrieren können.",
+            "en-GB": "Explore and buy extensions easily, right from within your own Shopware shop. Get access to loads of helpful Extensions and modern Themes that can be integrated into your shop."
+        },
+        "manufacturerLink": {
+            "de-DE": "https://www.shopware.com/en/",
+            "en-GB": "https://www.shopware.com/en/"
+        },
+        "supportLink": {
+            "de-DE": "https://www.shopware.com/en/",
+            "en-GB": "https://www.shopware.com/en/"
+        }
+    },
+    "scripts": {
+        "cs": [
+            "@php ../../../vendor/bin/php-cs-fixer fix --dry-run"
+        ],
+        "cs-fix": [
+            "@php ../../../vendor/bin/php-cs-fixer fix"
+        ],
+        "phpstan": [
+            "@php ../../../src/Core/DevOps/StaticAnalyze/phpstan-bootstrap.php",
+            "@php ../../../vendor/bin/phpstan analyze"
+        ]
+    }
+}
