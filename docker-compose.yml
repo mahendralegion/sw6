@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  database:
+    image: mysql:8.0
+    container_name: shopware_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: shopware
+      MYSQL_USER: shopware
+      MYSQL_PASSWORD: shopware
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
+  app:
+    image: dockware/dev:latest
+    container_name: shopware_app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      XDEBUG_ENABLED: 1
+      PHP_VERSION: "8.2"
+      SHOPWARE_VERSION: "6.6.10.2"
+      COMPOSER_VERSION: "2"
+      TIDEWAYS_KEY: ""
+      TIDEWAYS_SERVICE: ""
+      TIDEWAYS_ENV: ""
+      APP_ENV: "dev"
+      APP_URL: "http://localhost"
+      MAILER_DSN: "smtp://mailcatcher:1025"
+      DATABASE_URL: "mysql://shopware:shopware@database:3306/shopware"
+      OPENSEARCH_URL: "http://opensearch:9200"
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      - database
+
+  opensearch:
+    image: opensearchproject/opensearch:2
+    container_name: shopware_opensearch
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    environment:
+      discovery.type: single-node
+      plugins.security.disabled: 'true'
+
+volumes:
+  db_data:
+  opensearch-data:
