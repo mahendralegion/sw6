@@ -1,258 +1,267 @@
+require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const crypto = require('crypto');
+const morgan = require('morgan');
 
 // Initialize Express app
 const app = express();
-const port = 8000;
+const port = process.env.PORT || 8000;
+const APP_SECRET = process.env.APP_SECRET || 'S0M3S3CR3T'; // From environment or fallback
 
 // Middleware setup
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(morgan('dev')); // HTTP request logging
 
-// Mock data store
-const shopwareStores = {};
+// Data store
+const shopwareStores = new Map();
 
-// Middleware to verify Shopware request signature
-function verifyShopwareRequest(req, res, next) {
-    const signature = req.get('shopware-app-signature');
-    if (!signature) {
-        console.error('Missing shopware-app-signature header');
-        return res.status(401).json({ error: 'Missing signature header' });
+// Helper function to sort and stringify query parameters
+const normalizeQueryParams = (params) => {
+  return Object.entries(params)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${key}=${value}`)
+    .join('&');
+};
+
+// Signature verification middleware
+const verifyShopwareRequest = (req, res, next) => {
+  const receivedSignature = req.get('shopware-app-signature');
+  
+  if (!receivedSignature) {
+    const error = new Error('Missing shopware-app-signature header');
+    error.status = 401;
+    return next(error);
+  }
+
+  try {
+    let dataToSign;
+    if (req.method === 'GET') {
+      dataToSign = normalizeQueryParams(req.query);
+    } else {
+      dataToSign = JSON.stringify(req.body);
     }
 
-    const hmac = crypto.createHmac('sha256', 'S0M3S3CR3T');
-    const data = req.method === 'GET' 
-        ? JSON.stringify(req.query) 
-        : JSON.stringify(req.body);
-    
-    hmac.update(data);
+    console.debug('[Signature Verification] Data being signed:', dataToSign);
+
+    const hmac = crypto.createHmac('sha256', APP_SECRET);
+    hmac.update(dataToSign);
     const calculatedSignature = hmac.digest('hex');
 
-    if (signature !== calculatedSignature) {
-        console.error('Invalid signature received');
-        console.error('Expected:', calculatedSignature);
-        console.error('Received:', signature);
-        return res.status(401).json({ error: 'Invalid signature' });
+    console.debug('[Signature Verification]', {
+      received: receivedSignature,
+      calculated: calculatedSignature
+    });
+
+    if (!crypto.timingSafeEqual(
+      Buffer.from(receivedSignature, 'hex'),
+      Buffer.from(calculatedSignature, 'hex')
+    )) {
+      const error = new Error('Invalid signature');
+      error.status = 401;
+      error.details = {
+        received: receivedSignature,
+        calculated: calculatedSignature
+      };
+      return next(error);
     }
 
     next();
-}
+  } catch (error) {
+    error.message = `Signature verification failed: ${error.message}`;
+    error.status = error.status || 500;
+    next(error);
+  }
+};
 
-// Serve a mock loader.js
-app.get('/loader.js', (req, res) => {
-    res.set('Content-Type', 'application/javascript');
-    res.send(`
-        console.log('Hellobar loader initialized');
-        window.hellobar = function(action, config) {
-            console.log('Hellobar action:', action, 'with config:', config);
-            if (action === 'init') {
-                setTimeout(() => {
-                    const popup = document.createElement('div');
-                    popup.style.position = 'fixed';
-                    popup.style.top = '10px';
-                    popup.style.left = '10px';
-                    popup.style.right = '10px';
-                    popup.style.backgroundColor = '#3498db';
-                    popup.style.color = 'white';
-                    popup.style.padding = '20px';
-                    popup.style.zIndex = '9999';
-                    popup.style.borderRadius = '5px';
-                    popup.style.boxShadow = '0 5px 15px rgba(0,0,0,0.3)';
-                    popup.style.textAlign = 'center';
+// Validate required parameters middleware
+const validateRegistrationParams = (req, res, next) => {
+  const params = req.method === 'GET' ? req.query : req.body;
+  const { 'shop-id': shopId, 'shop-url': shopUrl, timestamp } = params;
 
-                    popup.innerHTML = '<h3>Hello from Hellobar!</h3><p>This is a demonstration popup for the Shopware integration.</p><button id="close-hellobar" style="border: none; background: white; color: #3498db; padding: 5px 15px; border-radius: 3px; cursor: pointer;">Close</button>';
-                    
-                    document.body.appendChild(popup);
-                    
-                    document.getElementById('close-hellobar').addEventListener('click', function() {
-                        popup.style.display = 'none';
-                    });
-                }, 2000);
-            }
-        };
-    `);
-});
+  if (!shopId || !shopUrl || !timestamp) {
+    const error = new Error('Missing required parameters');
+    error.status = 400;
+    error.missingParams = [];
+    if (!shopId) error.missingParams.push('shop-id');
+    if (!shopUrl) error.missingParams.push('shop-url');
+    if (!timestamp) error.missingParams.push('timestamp');
+    return next(error);
+  }
 
-// Combined GET/POST handler for registration
-app.all('/shopware/simple-auth', verifyShopwareRequest, (req, res) => {
-    try {
-        // Get parameters from either query (GET) or body (POST)
-        const shopId = req.method === 'GET' ? req.query['shop-id'] : req.body.shopId;
-        let shopUrl = req.method === 'GET' ? req.query['shop-url'] : req.body.shopUrl;
-        const timestamp = req.method === 'GET' ? req.query.timestamp : req.body.timestamp;
-        
-        console.log('Registration request received:', { 
-            method: req.method,
-            shopId, 
-            shopUrl, 
-            timestamp 
-        });
+  // Validate timestamp freshness (within 5 minutes)
+  const requestTime = new Date(parseInt(timestamp) * 1000);
+  const currentTime = new Date();
+  const timeDiff = (currentTime - requestTime) / 1000 / 60; // in minutes
 
-        // Validate required parameters
-        if (!shopId || !shopUrl || !timestamp) {
-            console.error('Missing parameters:', { shopId, shopUrl, timestamp });
-            return res.status(400).json({
-                error: 'Missing required parameters',
-                required: ['shop-id', 'shop-url', 'timestamp']
-            });
-        }
+  if (Math.abs(timeDiff) > 5) {
+    const error = new Error('Timestamp too old or in future');
+    error.status = 401;
+    error.details = {
+      requestTime,
+      currentTime,
+      differenceMinutes: timeDiff
+    };
+    return next(error);
+  }
 
-        // Fix URL encoding issues (replace × with & if present)
-        if (shopUrl.includes('×')) {
-            shopUrl = shopUrl.replace('×', '&');
-        }
-
-        // Standardize hostname
-        shopUrl = shopUrl.replace('localhost', 'host.docker.internal')
-                         .replace('192.168.29.204', 'host.docker.internal');
-
-        // Store shop information
-        shopwareStores[shopId] = {
-            shopId,
-            shopUrl,
-            registeredAt: new Date().toISOString(),
-            timestamp
-        };
-
-        // Generate proof according to Shopware requirements
-        const appSecret = 'S0M3S3CR3T';
-        const dataToSign = `${shopId}${shopUrl}${appSecret}${timestamp}`;
-        console.log('Data being signed:', dataToSign);
-        
-        const proof = crypto
-            .createHmac('sha256', appSecret)
-            .update(dataToSign)
-            .digest('hex');
-
-        console.log('Generated proof:', proof);
-
-        // Prepare response
-        const response = {
-            proof: proof,
-            secret: appSecret,
-            confirmation_url: `http://host.docker.internal:8000/confirm`
-        };
-
-        // Sign the response
-        const responseHmac = crypto.createHmac('sha256', appSecret);
-        responseHmac.update(JSON.stringify(response));
-        const responseSignature = responseHmac.digest('hex');
-
-        res.set('shopware-app-signature', responseSignature);
-        res.json(response);
-    } catch (error) {
-        console.error('Registration error:', error);
-        res.status(500).json({ error: 'Internal server error', details: error.message });
+  // Normalize shop URL
+  try {
+    const url = new URL(shopUrl);
+    if (url.hostname === 'localhost') {
+      url.hostname = 'host.docker.internal';
     }
-});
+    req.normalizedShopUrl = url.toString();
+  } catch (error) {
+    error.message = `Invalid shop-url: ${error.message}`;
+    error.status = 400;
+    return next(error);
+  }
+
+  req.registrationParams = {
+    shopId,
+    shopUrl: req.normalizedShopUrl,
+    timestamp
+  };
+
+  next();
+};
+
+// Registration endpoint
+app.all('/shopware/simple-auth', 
+  verifyShopwareRequest,
+  validateRegistrationParams,
+  (req, res) => {
+    try {
+      const { shopId, shopUrl, timestamp } = req.registrationParams;
+
+      // Store shop information
+      shopwareStores.set(shopId, {
+        shopId,
+        shopUrl,
+        timestamp,
+        registeredAt: new Date().toISOString()
+      });
+
+      // Generate proof
+      const proofData = `${shopId}${shopUrl}${APP_SECRET}${timestamp}`;
+      const proof = crypto.createHmac('sha256', APP_SECRET)
+                         .update(proofData)
+                         .digest('hex');
+
+      const response = {
+        proof,
+        secret: APP_SECRET,
+        confirmation_url: `http://${process.env.HOST || 'host.docker.internal'}:${port}/confirm`
+      };
+
+      // Sign the response
+      const responseSignature = crypto.createHmac('sha256', APP_SECRET)
+                                    .update(JSON.stringify(response))
+                                    .digest('hex');
+
+      res.set({
+        'shopware-app-signature': responseSignature,
+        'Content-Type': 'application/json'
+      });
+
+      res.status(200).json(response);
+
+    } catch (error) {
+      error.message = `Registration failed: ${error.message}`;
+      error.status = error.status || 500;
+      throw error;
+    }
+  }
+);
 
 // Confirmation endpoint
-app.post('/confirm', (req, res) => {
+app.post('/confirm', 
+  verifyShopwareRequest,
+  (req, res, next) => {
     try {
-        console.log('Confirmation request received:', req.body);
-        
-        const { shopId, shopUrl, timestamp, apiKey, secretKey } = req.body;
-        const signature = req.headers['shopware-shop-signature'];
-        
-        if (shopwareStores[shopId]) {
-            shopwareStores[shopId].apiKey = apiKey;
-            shopwareStores[shopId].secretKey = secretKey;
-            shopwareStores[shopId].confirmed = true;
-            shopwareStores[shopId].confirmationTime = new Date().toISOString();
-            
-            console.log('Shop confirmed:', shopId);
-            res.status(200).json({ status: 'confirmed', shopId });
-        } else {
-            console.error('Unknown shop ID:', shopId);
-            res.status(404).json({ error: 'Shop not found', shopId });
-        }
+      const { shopId, apiKey, secretKey } = req.body;
+
+      if (!shopwareStores.has(shopId)) {
+        const error = new Error('Shop not found');
+        error.status = 404;
+        throw error;
+      }
+
+      const shopData = shopwareStores.get(shopId);
+      shopData.apiKey = apiKey;
+      shopData.secretKey = secretKey;
+      shopData.confirmedAt = new Date().toISOString();
+
+      res.status(200).json({ 
+        status: 'confirmed',
+        shopId
+      });
+
     } catch (error) {
-        console.error('Confirmation error:', error);
-        res.status(500).json({ error: 'Internal server error', details: error.message });
+      next(error);
     }
-});
+  }
+);
 
-// Admin configuration endpoint
-app.get('/admin', (req, res) => {
-    res.send(`
-        <html>
-            <head>
-                <title>Hellobar Admin</title>
-                <style>
-                    body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
-                    h1 { color: #3498db; }
-                    .form-group { margin-bottom: 15px; }
-                    label { display: block; margin-bottom: 5px; }
-                    input, select { width: 100%; padding: 8px; box-sizing: border-box; }
-                    button { background: #3498db; color: white; border: none; padding: 10px 15px; cursor: pointer; }
-                    .status { padding: 10px; background: #f8f9fa; border-radius: 5px; margin-bottom: 20px; }
-                </style>
-            </head>
-            <body>
-                <h1>Hellobar Configuration</h1>
-                <div class="status">
-                    <h3>Server Status</h3>
-                    <p>Registered shops: ${Object.keys(shopwareStores).length}</p>
-                </div>
-                
-                <div class="form-group">
-                    <label>Account ID</label>
-                    <input type="text" value="demo-account-123" readonly />
-                </div>
-                
-                <div class="form-group">
-                    <label>Popup Type</label>
-                    <select>
-                        <option>Bar</option>
-                        <option>Modal</option>
-                        <option>Takeover</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label>Message</label>
-                    <input type="text" value="Welcome to our store!" />
-                </div>
-                
-                <button>Save Configuration</button>
-            </body>
-        </html>
-    `);
-});
+// Debug endpoint
+app.get('/debug/signature', (req, res) => {
+  const sampleData = {
+    'shop-id': 'test123',
+    'shop-url': 'http://localhost',
+    timestamp: Math.floor(Date.now() / 1000)
+  };
 
-// List all registered shops
-app.get('/shops', (req, res) => {
-    res.json({
-        status: 'success',
-        count: Object.keys(shopwareStores).length,
-        shops: shopwareStores
-    });
-});
+  const queryString = normalizeQueryParams(sampleData);
+  const signature = crypto.createHmac('sha256', APP_SECRET)
+                         .update(queryString)
+                         .digest('hex');
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-    res.json({
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        version: '1.0.0'
-    });
+  res.json({
+    instructions: 'Use this to verify your signature implementation',
+    secret: APP_SECRET,
+    sampleData,
+    queryString,
+    signature
+  });
 });
 
 // Error handling middleware
-app.use((err, req, res, next) => {
-    console.error('Unhandled error:', err);
-    res.status(500).json({ error: 'Internal server error', details: err.message });
+app.use((error, req, res, next) => {
+  const status = error.status || 500;
+  const response = {
+    error: error.message,
+    ...(error.details && { details: error.details }),
+    ...(error.missingParams && { missingParams: error.missingParams })
+  };
+
+  if (status >= 500) {
+    console.error('Server error:', error);
+  }
+
+  res.status(status).json(response);
 });
 
-// Start the server
+// Start server
 app.listen(port, '0.0.0.0', () => {
-    console.log(`\nHellobar Mock Server running on http://0.0.0.0:${port}`);
-    console.log('Available endpoints:');
-    console.log(`- GET/POST /shopware/simple-auth - Registration endpoint (Shopware will call this)`);
-    console.log(`- POST /confirm - Confirmation endpoint`);
-    console.log(`- GET /loader.js - JavaScript loader for frontend`);
-    console.log(`- GET /admin - Admin interface`);
-    console.log(`- GET /shops - List registered shops`);
-    console.log(`- GET /health - Health check endpoint\n`);
+  console.log(`
+  Shopware App Mock Server
+  ========================
+  Running on: http://0.0.0.0:${port}
+  App Secret: ${APP_SECRET.replace(/./g, '*')}
+  
+  Endpoints:
+  - GET/POST /shopware/simple-auth  Registration endpoint
+  - POST /confirm                   Confirmation endpoint
+  - GET /debug/signature            Signature debug tool
+
+  Environment:
+  - NODE_ENV: ${process.env.NODE_ENV || 'development'}
+  - PORT: ${port}
+  `);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
