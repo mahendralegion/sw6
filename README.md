@@ -62,3 +62,18 @@ For real production use, you would need to:
 2. Update the manifest.xml with your actual service URLs
 3. Implement proper Shopware-to-Hellobar authentication
 4. Support all Hellobar popup types and customizations
+
+# Important Commands
+```
+bin/console cache:clear
+bin/console app:refresh
+bin/console theme:compile
+```
+
+and if you using docker 
+
+```
+docker exec -it shopware_app php bin/console app:refresh
+docker exec -it shopware_app php bin/console theme:compile
+docker exec -it shopware_app php bin/console cache:clear
+```
