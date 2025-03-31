@@ -12,6 +12,11 @@
         <license>MIT</license>
     </meta>
 
+    <setup>
+        <registrationUrl>http://host.docker.internal:8000/shopware/auth</registrationUrl>
+        <secret>S0M3S3CR3T</secret>
+    </setup>
+
     <permissions>
         <read>theme</read>
         <read>sales_channel</read>
