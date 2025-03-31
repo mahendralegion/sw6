@@ -19,7 +19,7 @@
     </permissions>
 
     <admin>
-        <action-button action="getHellobarScript" entity="product" view="detail" url="http://192.168.29.204:8000/admin">
+        <action-button action="getHellobarScript" entity="product" view="detail" url="http://host.docker.internal:8000/admin">
             <label>Configure Hellobar</label>
         </action-button>
     </admin>
