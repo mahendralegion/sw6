@@ -5,17 +5,12 @@
         <name>Hellobar</name>
         <label>Hellobar Marketing Popups</label>
         <description>Add customizable popups to your Shopware store</description>
-        <author>Your Company</author>
-        <copyright>Your Company</copyright>
-        <version>1.0.0</version>
-        <icon>Resources/config/plugin.png</icon>
+        <author>Mahendra Choudhary</author>
+        <copyright>Legion works inc</copyright>
+        <version>1.0.5</version>
+        <icon>Resources/config/hb-icon.png</icon>
         <license>MIT</license>
     </meta>
-
-    <setup>
-        <registrationUrl>http://host.docker.internal:8000/shopware/auth</registrationUrl>
-        <secret>S0M3S3CR3T</secret>
-    </setup>
 
     <permissions>
         <read>theme</read>
@@ -24,7 +19,7 @@
     </permissions>
 
     <admin>
-        <action-button action="getHellobarScript" entity="product" view="detail" url="http://host.docker.internal:8000/admin">
+        <action-button action="getHellobarScript" entity="product" view="detail" url="http://192.168.29.204:8000/admin">
             <label>Configure Hellobar</label>
         </action-button>
     </admin>
