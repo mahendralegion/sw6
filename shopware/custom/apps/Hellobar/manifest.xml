@@ -13,7 +13,7 @@
     </meta>
 
     <setup>
-        <registrationUrl>http://host.docker.internal:8000/shopware/auth</registrationUrl>
+        <registrationUrl>http://host.docker.internal:3000/api/external/partners/shopware/register</registrationUrl>
         <secret>S0M3S3CR3T</secret>
     </setup>
 
